@@ -1,4 +1,4 @@
-# singleton
+# Singleton
 
 
 [![LICENSE](https://img.shields.io/github/license/gostafa/singleton)](/LICENSE) [![codecov](https://codecov.io/gh/gostafa/singleton/graph/badge.svg)](https://codecov.io/gh/gostafa/singleton) [![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/gostafa/singleton?utm_source=badge) [![Go Reference](https://pkg.go.dev/badge/github.com/gostafa/singleton)](https://pkg.go.dev/github.com/gostafa/singleton)
@@ -23,15 +23,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ## Contents
 
-- [Why](#why)
-- [Install](#install)
-- [Quick start](#quick-start)
-- [How it behaves](#how-it-behaves)
-- [Examples](#examples)
-- [API reference](#api-reference)
-- [Defaults](#defaults)
-- [Gotchas](#gotchas)
-- [Architecture](#architecture)
+* [Why](#why)
+* [Install](#install)
+* [Quick start](#quick-start)
+* [How it behaves](#how-it-behaves)
+* [Examples](#examples)
+* [API reference](#api-reference)
+* [Defaults](#defaults)
+* [Gotchas](#gotchas)
+* [Architecture](#architecture)
 
 ---
 
@@ -63,7 +63,7 @@ import "github.com/gostafa/singleton"
 
 **Requires Go 1.26.6+**. One dependency: [`cenkalti/backoff/v7`](https://github.com/cenkalti/backoff), fully quarantined behind an internal adapter — none of its types appear in this package's API.
 
-## Quick start
+## Quick Start
 
 ```go
 package cache
@@ -98,13 +98,13 @@ func Client(ctx context.Context) (*redis.Client, error) {
 
 Nothing runs until the first `Get`. Fifty concurrent `Get` calls share one initialization run; if dialing fails, that run retries within the configured budget.
 
-## How it behaves
+## How It Behaves
 
-### Lazy and single-flight
+### Lazy and Single-Flight
 
 The first `Get` starts one initialization run, no matter how many goroutines call concurrently. The run may call the factory multiple times when attempts fail, but attempts never overlap. After success, every caller receives the same value.
 
-### Caller cancellation is isolated
+### Caller Cancellation Is Isolated
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
@@ -118,11 +118,11 @@ value, err := p.Get(context.Background())   // still gets the value
 
 `Get` wraps `context.Cause(ctx)`, so a `context.WithCancelCause` reason reaches the caller through `errors.Is` and `errors.As`. If initialization completes at the same instant the caller's context dies, the completed result wins.
 
-### Retry, then give up
+### Retry, Then Give Up
 
 Failures are retried with exponential backoff and jitter until either the attempt budget or the initialization timeout is exhausted. Return [`Permanent(err)`](#func-permanent) to stop immediately — no point retrying a malformed config.
 
-### Failure is cached until you `Reset`
+### Failure Is Cached Until You `Reset`
 
 Once initialization fails, every `Get` returns that same error. This is deliberate: without it, each arriving request would trigger a fresh retry storm against a dependency that is already struggling.
 
@@ -144,7 +144,7 @@ A panic in a retry observer is recovered and discarded. Instrumentation must nev
 
 ## Examples
 
-### Permanent failures
+### Permanent Failures
 
 Retrying cannot fix bad configuration, so don't burn the budget on it:
 
@@ -173,7 +173,7 @@ var db = singleton.MustNew(func(ctx context.Context) (*pgxpool.Pool, error) {
 
 `errors.Is` still sees through `Permanent`, so wrapping loses nothing.
 
-### Classifying failures
+### Classifying Failures
 
 Branch on `Reason()` — **not** on `errors.Is`. See [Gotchas](#classify-with-reason-not-errorsis).
 
@@ -218,7 +218,7 @@ provider := singleton.MustNew(dialRedis,
 
 One event per *retried* attempt — a run of 3 attempts ending in success emits 2 events, with `Attempt` 1 then 2. The final attempt emits nothing; its outcome is the return value of `Get`.
 
-### Testing against the interface
+### Testing Against the Interface
 
 `Interface[T]` lets consumers substitute a fake without touching this package:
 
@@ -236,7 +236,7 @@ func (f fakeProvider) Reset()                                     {}
 svc := &Service{cache: fakeProvider{client: miniredisClient}}
 ```
 
-### Recovering from a startup outage
+### Recovering from a Startup Outage
 
 ```go
 func (h *Health) Check(ctx context.Context) error {
@@ -256,7 +256,7 @@ func (h *Health) Check(ctx context.Context) error {
 }
 ```
 
-### Handling construction errors
+### Handling Construction Errors
 
 `MustNew` panics on invalid options, which is what you want at package scope. Use `New` when options are computed at runtime:
 
@@ -274,7 +274,7 @@ Neither reports *factory* failures — those surface at `Get`.
 
 ---
 
-## API reference
+## API Reference
 
 Everything below is the complete exported surface. All other packages are under `internal/` and cannot be imported.
 
@@ -306,7 +306,7 @@ Marks a factory error as non-retriable. Initialization stops at that attempt wit
 
 The concrete result is a `*PermanentError`, which callers can inspect with `errors.As`. A factory may also return a `*PermanentError` directly, including wrapped in another error.
 
-### Error values
+### Error Values
 
 Use `errors.Is` to match construction errors returned by `New` or panicked by `MustNew`:
 
@@ -481,7 +481,7 @@ reason   = retries exhausted
 
 ## Gotchas
 
-### Classify with `Reason`, not `errors.Is`
+### Classify with `Reason`, Not `errors.Is`
 
 `Unwrap` deliberately exposes both the factory error and the stop reason, so `errors.Is` answers *"does this appear anywhere in the chain"* — a different question from *"why did initialization stop"*.
 
@@ -494,23 +494,23 @@ errors.Is(err, context.DeadlineExceeded)     // ALSO true — the factory's erro
 
 `Reason()` is the authoritative classification. Use `errors.Is` to check whether a factory error or public stop error appears in the chain.
 
-### The factory owns its cleanup
+### The Factory Owns Its Cleanup
 
 Restated because it leaks sockets quietly: every failed attempt's return value is dropped. Close what you opened before returning an error.
 
-### A failed singleton stays failed
+### A Failed Singleton Stays Failed
 
 By design. Nothing re-initializes automatically — wire `Reset` into a health check if you want recovery.
 
-### `Get` panics on misuse
+### `Get` Panics on Misuse
 
 Nil context and zero-value `Provider` panic rather than returning errors, matching stdlib precedent (`context.WithCancel`). Both indicate a programming error, not a runtime condition.
 
-### `FailureCanceled` is currently unreachable
+### `FailureCanceled` Is Currently Unreachable
 
 The initialization context descends from `context.Background()` with only a timeout, and nothing cancels it — so no failure is classified `FailureCanceled` today. The constant exists for a future shutdown hook. Don't write a code path that depends on receiving it.
 
-### Inspecting permanent errors
+### Inspecting Permanent Errors
 
 `Permanent(err)` returns a public `*PermanentError`. Inspect the marker with `errors.As`, match its wrapped error with `errors.Is`, or read `InitError.Reason()` after initialization stops. The final initialization error preserves the marker's wrapped error in `InitError.Err()`.
 
