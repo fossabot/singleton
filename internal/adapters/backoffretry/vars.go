@@ -7,4 +7,4 @@ import (
 	"github.com/gostafa/singleton/internal/ports"
 )
 
-var _ ports.Retrier[int] = (*Retrier[int])(nil)
+var _ ports.Retrier[int] = (*retrier[int])(nil)

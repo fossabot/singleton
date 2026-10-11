@@ -8,7 +8,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gostafa/singleton/internal/adapters/backoffretry"
 	"github.com/gostafa/singleton/internal/domain"
 )
 
@@ -42,7 +41,7 @@ func TestPublicInitErrorReplacesInternalStopCauses(t *testing.T) {
 		t.Run(test.reason.String(), func(t *testing.T) {
 			t.Parallel()
 
-			internal := backoffretry.NewInitError(reason, errBoom, errInternalStop)
+			internal := &internalInitError{reason: reason}
 
 			got := publicInitError(internal)
 			if got.Reason() != test.reason || !errors.Is(got, test.cause) {
@@ -65,7 +64,7 @@ func assertPublicErrorChain(t *testing.T, got *InitError) {
 		t.Error("public error leaked the internal stop cause")
 	}
 
-	if _, ok := errors.AsType[*backoffretry.InitError](got); ok {
+	if _, ok := errors.AsType[domain.InitError](got); ok {
 		t.Error("public error leaked the internal InitError")
 	}
 }
@@ -102,3 +101,16 @@ func TestDefaultConfigRegistersNoObserver(t *testing.T) {
 		t.Error("Observer = non-nil, want nil until WithRetryObserver registers one")
 	}
 }
+
+// internalInitError supplies the domain contract without exposing adapter internals.
+type internalInitError struct {
+	reason domain.FailureReason
+}
+
+func (failure *internalInitError) Error() string { return errBoom.Error() }
+
+func (failure *internalInitError) Err() error { return errBoom }
+
+func (failure *internalInitError) Reason() domain.FailureReason { return failure.reason }
+
+func (failure *internalInitError) Unwrap() []error { return []error{errBoom, errInternalStop} }

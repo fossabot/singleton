@@ -197,7 +197,7 @@ func internalOperation[Value any](operation ports.Operation[Value]) ports.Operat
 	return func(ctx context.Context) (Value, error) {
 		value, err := operation(ctx)
 		if permanent, ok := errors.AsType[*PermanentError](err); ok {
-			return value, &backoffretry.PermanentError{Err: permanent.Err}
+			return value, backoffretry.Permanent(permanent.Err)
 		}
 
 		//nolint:wrapcheck // Preserve factory errors for classification and observers.

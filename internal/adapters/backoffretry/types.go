@@ -1,6 +1,8 @@
 // Gostafa 2026.
 // SPDX-License-Identifier: Apache-2.0.
 
+// Package backoffretry implements the retry port with exponential backoff and
+// jitter. Concrete retry policies and failure types stay private to the adapter.
 package backoffretry
 
 import (
@@ -18,8 +20,8 @@ type (
 		Reset()
 	}
 
-	// InitError is an immutable classified initialization failure.
-	InitError struct{ details failureDetails }
+	// initError is an immutable classified initialization failure.
+	initError struct{ details failureDetails }
 
 	failureDetails = struct {
 		err    error
@@ -27,10 +29,9 @@ type (
 		reason domain.FailureReason
 	}
 
-	// PermanentError marks a factory error as non-retriable.
-	PermanentError struct {
-		// Err is the non-retriable factory error.
-		Err error
+	// permanentError marks a factory error as non-retriable.
+	permanentError struct {
+		err error
 	}
 
 	// Config tunes the retry policy.
@@ -47,10 +48,10 @@ type (
 		MaxInterval time.Duration
 	}
 
-	// Retrier runs an operation with exponential backoff and jitter.
+	// retrier runs an operation with exponential backoff and jitter.
 	//
 	// It implements [ports.Retrier].
-	Retrier[T any] struct {
+	retrier[T any] struct {
 		cfg Config
 	}
 )

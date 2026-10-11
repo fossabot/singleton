@@ -231,3 +231,38 @@ func TestDoReportsACancelledParentContext(t *testing.T) {
 		t.Errorf("Reason = %v, want %v", initErr.Reason(), domain.FailureCanceled)
 	}
 }
+
+var errFactory = errors.New("factory failed")
+
+func TestPermanentReturnsNilForNil(t *testing.T) {
+	t.Parallel()
+
+	got := backoffretry.Permanent(nil)
+	if got != nil {
+		t.Errorf("Permanent(nil) = %v, want nil", got)
+	}
+}
+
+func TestPermanentWrapsTheError(t *testing.T) {
+	t.Parallel()
+
+	got := backoffretry.Permanent(errFactory)
+
+	var permanent domain.PermanentError
+
+	if !errors.As(got, &permanent) {
+		t.Fatalf("errors.As(%v, domain.PermanentError) = false, want true", got)
+	}
+
+	if !errors.Is(permanent.PermanentCause(), errFactory) {
+		t.Errorf("Err = %v, want %v", permanent.PermanentCause(), errFactory)
+	}
+
+	if got.Error() != errFactory.Error() {
+		t.Errorf("Error() = %q, want %q", got.Error(), errFactory.Error())
+	}
+
+	if !errors.Is(got, errFactory) {
+		t.Errorf("errors.Is(got, errFactory) = false, want true")
+	}
+}
